@@ -2,6 +2,9 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use App\Models\User;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
@@ -21,10 +24,9 @@ use App\Http\Controllers\PermissionController;
 |
 */
 
-
-
 Route::apiResource('/roles', RoleController::class);
 Route::apiResource('/permissions', PermissionController::class);
+
 // Authenticated User Info (Sanctum, optional)
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -74,9 +76,36 @@ Route::middleware(['auth:api'])->group(function () {
 Route::get('/search', [MovieSearchController::class, 'search']);
 Route::get('/genres', fn() => \App\Models\Genre::select('id', 'name')->orderBy('name')->get());
 
-
 Route::middleware('auth:api')->group(function () {
     Route::get('/me', [UserController::class, 'me']);
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users/{id}/role', [UserController::class, 'updateRole']);
+});
+
+// ==============================
+// Debug Login Route (for testing login issues)
+// ==============================
+Route::post('/debug-login', function (Request $request) {
+    $email = trim(strtolower($request->input('email')));
+    $password = $request->input('password');
+
+    Log::info("Login attempt with email: $email");
+
+    $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+
+    if (!$user) {
+        Log::info("User not found for email: $email");
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
+    Log::info("User found. Checking password...");
+
+    if (!Hash::check($password, $user->password)) {
+        Log::info("Password check failed for email: $email");
+        return response()->json(['message' => 'Invalid password'], 401);
+    }
+
+    Log::info("Password verified. Login successful for email: $email");
+
+    return response()->json(['message' => 'Login successful', 'user' => $user]);
 });
