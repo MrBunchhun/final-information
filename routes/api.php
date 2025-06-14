@@ -1,10 +1,8 @@
 <?php
 
+use App\Http\Controllers\ActorController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use App\Models\User;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Auth\SocialAuthController;
@@ -24,9 +22,10 @@ use App\Http\Controllers\PermissionController;
 |
 */
 
+
+
 Route::apiResource('/roles', RoleController::class);
 Route::apiResource('/permissions', PermissionController::class);
-
 // Authenticated User Info (Sanctum, optional)
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -40,6 +39,8 @@ Route::post('/auth/register', [AuthController::class, 'store']);
 Route::get('/auth/user/{id}', [AuthController::class, 'show']);
 Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp']);
+Route::post('auth/request-password-reset', [AuthController::class, 'requestPasswordReset']);
+Route::post('auth/reset-password', [AuthController::class, 'resetPassword']);
 // Route::middleware('auth:api')->get('/me', [AuthController::class, 'me']);
 // Route::middleware('auth:api')->post('/logout', [AuthController::class, 'logout']);
 
@@ -61,10 +62,11 @@ Route::get('/movies', [MovieApiController::class, 'index']);
 Route::get('/movies/by-id/{id}', [MovieApiController::class, 'showById']);
 Route::get('/movies/by-tmdb/{tmdb_id}', [MovieApiController::class, 'showByTmdb']);
 Route::get('/movies/{tmdb_id}/trailer', [MovieApiController::class, 'getTrailer']);
+Route::get('/actor/{id}', [ActorController::class, 'show']);
 Route::middleware(['auth:api'])->group(function () {
-    // Route::post('/movies', [MovieApiController::class, 'store']);
-    // Route::put('/movies/{id}', [MovieApiController::class, 'update']);
-    // Route::delete('/movies/{id}', [MovieApiController::class, 'destroy']);
+    Route::post('/movies', [MovieApiController::class, 'store']);
+    Route::put('/movies/{id}', [MovieApiController::class, 'update']);
+    Route::delete('/movies/{id}', [MovieApiController::class, 'destroy']);
 
     Route::post('/favorites/toggle', [MovieApiController::class, 'toggleFavorite']);
     Route::get('/movies/favorites', [MovieApiController::class, 'getFavorites']);
@@ -76,36 +78,9 @@ Route::middleware(['auth:api'])->group(function () {
 Route::get('/search', [MovieSearchController::class, 'search']);
 Route::get('/genres', fn() => \App\Models\Genre::select('id', 'name')->orderBy('name')->get());
 
+
 Route::middleware('auth:api')->group(function () {
     Route::get('/me', [UserController::class, 'me']);
     Route::get('/users', [UserController::class, 'index']);
     Route::post('/users/{id}/role', [UserController::class, 'updateRole']);
-});
-
-// ==============================
-// Debug Login Route (for testing login issues)
-// ==============================
-Route::post('/debug-login', function (Request $request) {
-    $email = trim(strtolower($request->input('email')));
-    $password = $request->input('password');
-
-    Log::info("Login attempt with email: $email");
-
-    $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
-
-    if (!$user) {
-        Log::info("User not found for email: $email");
-        return response()->json(['message' => 'User not found'], 404);
-    }
-
-    Log::info("User found. Checking password...");
-
-    if (!Hash::check($password, $user->password)) {
-        Log::info("Password check failed for email: $email");
-        return response()->json(['message' => 'Invalid password'], 401);
-    }
-
-    Log::info("Password verified. Login successful for email: $email");
-
-    return response()->json(['message' => 'Login successful', 'user' => $user]);
 });
