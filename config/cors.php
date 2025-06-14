@@ -5,7 +5,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://info-mv-final.vercel.app'],
+    'allowed_origins' => ['https://infoma-mv.vercel.app'],
 
     'allowed_origins_patterns' => [],
 
