@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Contracts\Mail\Mailer;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\OtpVerificationMail;
+
+use App\Mail\PasswordResetMail;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 
 class AuthController extends Controller
@@ -21,7 +24,7 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:6'
+            'password' => 'required|string|min:6|max:50',
         ]);
 
         $user = User::create([
@@ -57,13 +60,22 @@ class AuthController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
+        // Check if user exists
+        $user = User::where('email', $credentials['email'])->first();
+
         if (! $token = JWTAuth::attempt($credentials)) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
         $user = JWTAuth::user();
-        if (! $user->is_verified) {
-            return response()->json(['error' => 'Email not verified.'], 403);
+        if (! $user->is_verified && app()->environment('production')) {
+    return response()->json(['error' => 'Email not verified.'], 403);
+}
+
+
+        // Check if password is correct
+        if (! Hash::check($credentials['password'], $user->password)) {
+            return response()->json(['error' => 'Invalid credentials.'], 401);
         }
         $user->load('roles'); // 💡 load roles and permissions
 
@@ -74,6 +86,7 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'roles' => $user->roles->pluck('name'), // ✅ proper dynamic roles
+                'profile_image' => $user->profile_image ?? null,
 
             ]
         ]);
@@ -157,5 +170,60 @@ class AuthController extends Controller
         Mail::to($user->email)->send(new OtpVerificationMail($user));
 
         return response()->json(['message' => 'New OTP sent to your email.']);
+    }
+
+    public function requestPasswordReset(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['error' => 'Email not found'], 404);
+        }
+
+        $token = Str::random(60);
+
+        DB::table('password_resets')->updateOrInsert(
+            ['email' => $request->email],
+            [
+                'token' => $token,
+                'created_at' => now()
+            ]
+        );
+
+        Mail::to($request->email)->send(new PasswordResetMail($token));
+
+        return response()->json(['message' => 'Password reset link sent to email']);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|min:4|confirmed',
+        ]);
+
+        $record = DB::table('password_resets')
+            ->where('email', $request->email)
+            ->where('token', $request->token)
+            ->first();
+
+        if (!$record) {
+            return response()->json(['error' => 'Invalid or expired token'], 422);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Delete used token
+        DB::table('password_resets')->where('email', $request->email)->delete();
+
+        return response()->json(['message' => 'Password reset successful']);
     }
 }
