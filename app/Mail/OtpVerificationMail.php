@@ -25,11 +25,15 @@ class OtpVerificationMail extends Mailable
      * Build the message.
      */
     public function build()
-    {
-        return $this->subject('Your OTP Code')
-            ->view('emails.otp')
-            ->with(['otp' => $this->user->otp]);
-    }
+{
+    return $this->subject('Your OTP Code')
+        ->view('emails.otp')
+        ->with([
+            'otp' => $this->user->otp,
+            'user' => $this->user, // 🔥 Pass full user for use in Blade
+        ]);
+}
+
 
     /**
      * Get the message envelope.
