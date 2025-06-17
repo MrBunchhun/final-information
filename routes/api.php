@@ -41,8 +41,6 @@ Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('auth/request-password-reset', [AuthController::class, 'requestPasswordReset']);
 Route::post('auth/reset-password', [AuthController::class, 'resetPassword']);
-// Route::middleware('auth:api')->get('/me', [AuthController::class, 'me']);
-// Route::middleware('auth:api')->post('/logout', [AuthController::class, 'logout']);
 
 // ==============================
 // Social Login (Google & GitHub)

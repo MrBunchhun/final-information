@@ -19,39 +19,47 @@ class AuthController extends Controller
     /**
      * Register a new user and assign "user" role.
      */
-    public function store(Request $request) // used for register
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|string|min:6|max:50',
-        ]);
+    public function store(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users',
+        'password' => 'required|string|min:6|max:50',
+    ]);
 
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => bcrypt($request->password)
-        ]);
+    $user = User::create([
+        'name'     => $request->name,
+        'email'    => $request->email,
+        'password' => bcrypt($request->password)
+    ]);
 
-        if ($user->roles()->count() === 0) {
-            $user->roles()->attach(2); // or get role by name 'user'
-        }
-
-        // Generate 6-digit OTP
-        $otp = rand(100000, 999999);
-
-        // Save OTP to user
-        $user->otp = $otp;
-        $user->otp_expires_at = now()->addMinutes(10);
-        $user->save();
-
-        // Send OTP email
-        Mail::to($user->email)->send(new \App\Mail\OtpVerificationMail($user));
-
-        return response()->json([
-            'message' => 'OTP sent to email. Please verify to activate your account.',
-        ]);
+    if ($user->roles()->count() === 0) {
+        $user->roles()->attach(2);
     }
+
+    // Generate 6-digit OTP
+    $otp = rand(100000, 999999);
+    $user->otp = $otp;
+    $user->otp_expires_at = now()->addMinutes(10);
+    $user->save();
+
+    try {
+        Mail::to($user->email)->send(new \App\Mail\OtpVerificationMail($user));
+    } catch (\Exception $e) {
+        // Log the error so you can debug later
+        \Log::error('OTP Email Send Failed: ' . $e->getMessage());
+
+        // Optionally: rollback the user creation if needed
+        return response()->json([
+            'error' => 'Registration failed during email sending. Please try again later.'
+        ], 500);
+    }
+
+    return response()->json([
+        'message' => 'OTP sent to email. Please verify to activate your account.',
+    ]);
+}
+
 
     /**
      * Authenticate user and return token.
