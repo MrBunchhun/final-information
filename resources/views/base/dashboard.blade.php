@@ -8,7 +8,7 @@
         <div class="col-md-12 mb-4">
             <div class="card bg-gradient-primary text-white shadow">
                 <div class="card-body text-center">
-                    <h1>🎬 Welcome to <strong>FunWatch Admin</strong>!</h1>
+                    <h1>🎬 Welcome</h1>
                     <p>Manage Movies, Actors, and Users from this panel.</p>
                 </div>
             </div>
