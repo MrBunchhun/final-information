@@ -1,2 +1,2 @@
 import './bootstrap';
-import '@backpack/crud/src/resources/js/app.js';
+import '@backpack/crud/resources/js/app.js';
