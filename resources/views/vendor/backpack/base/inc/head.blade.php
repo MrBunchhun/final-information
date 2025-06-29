@@ -5,10 +5,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    {{-- ✅ Vite assets --}}
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-    {{-- Backpack default meta --}}
+    {{-- Backpack CSS --}}
+    @backpackStyles
     @stack('before_styles')
     @stack('after_styles')
+
+    {{-- Optional Vite assets (for frontend, not admin panel) --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
